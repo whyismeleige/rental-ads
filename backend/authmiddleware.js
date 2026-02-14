@@ -1,5 +1,5 @@
-const { verifyToken } = require("../utils/auth.utils");
-const User = require("../models").user;
+const { verifyToken } = require("./authutils");
+const User = require("./modelsindex").user;
 
 const clearCookie = (res) => {
   res.clearCookie("token", {

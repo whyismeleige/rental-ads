@@ -1,14 +1,14 @@
 const mongoose = require("mongoose"); // Required for transactions
-const db = require("../models");
-const asyncHandler = require("../middleware/asyncHandler");
+const db = require("./modelsindex");
+const asyncHandler = require("./asynchandler");
 
 const {
   ValidationError,
   AuthenticationError,
-} = require("../utils/error.utils");
+} = require("./errorutils");
 
-const { createToken, sanitizeUser } = require("../utils/auth.utils");
-const { NotFoundError } = require("../utils/error.utils");
+const { createToken, sanitizeUser } = require("./authutils");
+const { NotFoundError } = require("./errorutils");
 
 const User = db.user;
 

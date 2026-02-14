@@ -1,6 +1,6 @@
-const Listing = require("../models/Listing.model");
-const asyncHandler = require("../middleware/asyncHandler");
-const { ValidationError, NotFoundError, AuthorizationError } = require("../utils/error.utils");
+const Listing = require("./listingmodel");
+const asyncHandler = require("./asynchandler");
+const { ValidationError, NotFoundError, AuthorizationError } = require("./errorutils");
 
 const createListing = asyncHandler(async (req, res) => {
   const listingData = { ...req.body, owner: req.user._id };

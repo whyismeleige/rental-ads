@@ -1,7 +1,7 @@
 require("dotenv").config();
 const url = process.env.MONGODB_URI;
 const dbName = process.env.DB_NAME;
-const db = require("../models");
+const db = require("./modelsindex");
 
 // Database Connection
 const connectDB = () => {
