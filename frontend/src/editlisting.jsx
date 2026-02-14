@@ -1,29 +1,52 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { listingApi } from '@/lib/api/listing.api';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { toast } from 'react-hot-toast';
-import { Loader2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useNavigate, useParams, Link } from 'react-router-dom';
+import styles from './createlisting.module.css';
 
-const EditListing = () => {
+function EditListing() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [formData, setFormData] = useState({
-    title: '', description: '', price: '', location: '',
-    bedrooms: '', bathrooms: '', sqft: '', imageUrl: '', tags: ''
+    title: '',
+    description: '',
+    price: '',
+    location: '',
+    bedrooms: '',
+    bathrooms: '',
+    sqft: '',
+    imageUrl: '',
+    tags: ''
   });
+
+  const user = JSON.parse(localStorage.getItem('user'));
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    alert('Logged out successfully');
+    window.location.href = '/';
+  };
 
   useEffect(() => {
     const fetchListing = async () => {
       try {
-        const { data } = await listingApi.getById(id);
-        setFormData({ ...data, tags: data.tags.join(', ') });
+        const response = await fetch(`http://localhost:5000/api/listings/${id}`);
+        const data = await response.json();
+        
+        setFormData({
+          title: data.title,
+          description: data.description,
+          price: data.price,
+          location: data.location,
+          bedrooms: data.bedrooms,
+          bathrooms: data.bathrooms,
+          sqft: data.sqft,
+          imageUrl: data.imageUrl,
+          tags: data.tags ? data.tags.join(', ') : ''
+        });
       } catch (err) {
+        alert('Failed to load listing');
         navigate('/rentals');
       } finally {
         setLoading(false);
@@ -32,55 +55,227 @@ const EditListing = () => {
     fetchListing();
   }, [id, navigate]);
 
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setUpdating(true);
+
     try {
-      const data = { 
-        ...formData, 
-        tags: formData.tags.split(',').map(tag => tag.trim()).filter(t => t !== "") 
+      const token = localStorage.getItem('token');
+      
+      const listingData = {
+        title: formData.title,
+        description: formData.description,
+        price: Number(formData.price),
+        location: formData.location,
+        bedrooms: Number(formData.bedrooms),
+        bathrooms: Number(formData.bathrooms),
+        sqft: Number(formData.sqft),
+        imageUrl: formData.imageUrl,
+        tags: formData.tags.split(',').map(tag => tag.trim()).filter(t => t !== '')
       };
-      await listingApi.update(id, data);
-      toast.success("Listing updated!");
-      navigate(`/listing/${id}`);
+
+      const response = await fetch(`http://localhost:5000/api/listings/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(listingData)
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert('Listing updated!');
+        navigate('/my-listings');
+      } else {
+        alert(data.message || 'Failed to update listing');
+      }
     } catch (error) {
-      toast.error("Update failed");
+      alert('Error updating listing');
     } finally {
       setUpdating(false);
     }
   };
 
-  if (loading) return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin" /></div>;
+  if (loading) {
+    return <div className={styles.loading}>Loading...</div>;
+  }
 
   return (
-    <div className="min-h-screen bg-stone-50 py-12 px-4">
-      <Card className="max-w-2xl mx-auto border-stone-200">
-        <CardHeader>
-          <CardTitle className="text-2xl font-serif text-stone-900">Edit Listing</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <Input value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} required />
-            <Textarea value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} required />
-            <div className="grid grid-cols-2 gap-4">
-              <Input type="number" value={formData.price} onChange={(e) => setFormData({...formData, price: e.target.value})} required />
-              <Input value={formData.location} onChange={(e) => setFormData({...formData, location: e.target.value})} required />
+    <div className={styles.page}>
+      <nav className={styles.navbar}>
+        <div className={styles.navContent}>
+          <Link to="/" className={styles.brand}>
+            <div className={styles.logo}>🔑</div>
+            <span>Ghar Dekho</span>
+          </Link>
+
+          <div className={styles.navLinks}>
+            <Link to="/rentals">Rentals</Link>
+          </div>
+
+          <div className={styles.navActions}>
+            <Link to="/my-listings" className={styles.myListingsBtn}>My Listings</Link>
+            <button onClick={handleLogout} className={styles.logoutBtn}>Logout</button>
+            <div className={styles.avatar}>{user?.name?.[0]?.toUpperCase() || 'U'}</div>
+          </div>
+        </div>
+      </nav>
+
+      <div className={styles.container}>
+        <div className={styles.header}>
+          <h1>Edit Listing</h1>
+          <p>Update your rental property details</p>
+        </div>
+
+        <div className={styles.formCard}>
+          <form onSubmit={handleSubmit}>
+            <div className={styles.formGroup}>
+              <label>Property Title *</label>
+              <input
+                type="text"
+                name="title"
+                value={formData.title}
+                onChange={handleChange}
+                placeholder="e.g., Spacious 3BHK in Bandra"
+                required
+                minLength={5}
+              />
             </div>
-            <div className="grid grid-cols-3 gap-4">
-              <Input type="number" value={formData.bedrooms} onChange={(e) => setFormData({...formData, bedrooms: e.target.value})} required />
-              <Input type="number" value={formData.bathrooms} onChange={(e) => setFormData({...formData, bathrooms: e.target.value})} required />
-              <Input type="number" value={formData.sqft} onChange={(e) => setFormData({...formData, sqft: e.target.value})} required />
+
+            <div className={styles.formGroup}>
+              <label>Description *</label>
+              <textarea
+                name="description"
+                value={formData.description}
+                onChange={handleChange}
+                placeholder="Describe your property..."
+                rows={5}
+                required
+                minLength={20}
+              />
             </div>
-            <Input value={formData.imageUrl} onChange={(e) => setFormData({...formData, imageUrl: e.target.value})} required />
-            <Input value={formData.tags} onChange={(e) => setFormData({...formData, tags: e.target.value})} placeholder="Tags (comma separated)" />
-            <Button type="submit" disabled={updating} className="w-full bg-stone-900 text-white">
-              {updating ? "Saving..." : "Save Changes"}
-            </Button>
+
+            <div className={styles.formRow}>
+              <div className={styles.formGroup}>
+                <label>Monthly Rent (₹) *</label>
+                <input
+                  type="number"
+                  name="price"
+                  value={formData.price}
+                  onChange={handleChange}
+                  placeholder="25000"
+                  required
+                  min={0}
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label>Location *</label>
+                <input
+                  type="text"
+                  name="location"
+                  value={formData.location}
+                  onChange={handleChange}
+                  placeholder="e.g., Bandra, Mumbai"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className={styles.formRow}>
+              <div className={styles.formGroup}>
+                <label>Bedrooms *</label>
+                <input
+                  type="number"
+                  name="bedrooms"
+                  value={formData.bedrooms}
+                  onChange={handleChange}
+                  placeholder="3"
+                  required
+                  min={0}
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label>Bathrooms *</label>
+                <input
+                  type="number"
+                  name="bathrooms"
+                  value={formData.bathrooms}
+                  onChange={handleChange}
+                  placeholder="2"
+                  required
+                  min={0}
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label>Area (sqft) *</label>
+                <input
+                  type="number"
+                  name="sqft"
+                  value={formData.sqft}
+                  onChange={handleChange}
+                  placeholder="1200"
+                  required
+                  min={1}
+                />
+              </div>
+            </div>
+
+            <div className={styles.formGroup}>
+              <label>Image URL *</label>
+              <input
+                type="url"
+                name="imageUrl"
+                value={formData.imageUrl}
+                onChange={handleChange}
+                placeholder="https://example.com/image.jpg"
+                required
+              />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label>Tags/Amenities (comma-separated)</label>
+              <input
+                type="text"
+                name="tags"
+                value={formData.tags}
+                onChange={handleChange}
+                placeholder="Furnished, Parking, Lift"
+              />
+            </div>
+
+            <div className={styles.actions}>
+              <button 
+                type="button" 
+                onClick={() => navigate(-1)}
+                className={styles.cancelBtn}
+              >
+                Cancel
+              </button>
+              <button 
+                type="submit" 
+                className={styles.submitBtn}
+                disabled={updating}
+              >
+                {updating ? 'Updating...' : 'Update Listing'}
+              </button>
+            </div>
           </form>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
-};
+}
 
 export default EditListing;

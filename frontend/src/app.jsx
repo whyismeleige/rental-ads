@@ -1,35 +1,45 @@
-import { Routes, Route, Navigate } from "react-router-dom";
-import ProtectedRoute from "@/components/routes/ProtectedRoute";
-import PublicRoute from "@/components/routes/PublicRoute";
+import { Routes, Route, Navigate } from 'react-router-dom';
+import Home from './home.jsx';
+import Login from './login.jsx';
+import Register from './register.jsx';
+import Rentals from './rentals.jsx';
+import ListingDetail from './listingdetail.jsx';
+import CreateListing from './createlisting.jsx';
+import EditListing from './editlisting.jsx';
+import MyListings from './mylistings.jsx';
 
-// Pages
-import AuthPage from "@/pages/Auth";
-import Home from "@/pages/Home";
-import Rentals from "@/pages/Rentals";
-import ListingDetail from "@/pages/ListingDetail";
-import CreateListing from "@/pages/CreateListing";
-import EditListing from "@/pages/EditListing";
-import MyListings from "@/pages/MyListings";
-
-export default function App() {
+function App() {
   return (
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/rentals" element={<Rentals />} />
       <Route path="/listing/:id" element={<ListingDetail />} />
-
-      <Route element={<PublicRoute />}>
-        <Route path="/login" element={<AuthPage />} />
-        <Route path="/register" element={<AuthPage />} />
-      </Route>
-
-      <Route element={<ProtectedRoute />}>
-        <Route path="/my-listings" element={<MyListings />} />
-        <Route path="/create-listing" element={<CreateListing />} />
-        <Route path="/edit-listing/:id" element={<EditListing />} />
-      </Route>
-
+      
+      <Route 
+        path="/login" 
+        element={localStorage.getItem('token') ? <Navigate to="/rentals" /> : <Login />} 
+      />
+      <Route 
+        path="/register" 
+        element={localStorage.getItem('token') ? <Navigate to="/rentals" /> : <Register />} 
+      />
+      
+      <Route 
+        path="/my-listings" 
+        element={localStorage.getItem('token') ? <MyListings /> : <Navigate to="/login" />} 
+      />
+      <Route 
+        path="/create-listing" 
+        element={localStorage.getItem('token') ? <CreateListing /> : <Navigate to="/login" />} 
+      />
+      <Route 
+        path="/edit-listing/:id" 
+        element={localStorage.getItem('token') ? <EditListing /> : <Navigate to="/login" />} 
+      />
+      
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>
   );
 }
+
+export default App;

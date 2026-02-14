@@ -1,81 +1,248 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { listingApi } from '@/lib/api/listing.api';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { toast } from 'react-hot-toast';
+import { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import styles from './createlisting.module.css';
 
-const CreateListing = () => {
+function CreateListing() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    title: '', description: '', price: '', location: '',
-    bedrooms: '', bathrooms: '', sqft: '', imageUrl: '', tags: ''
+    title: '',
+    description: '',
+    price: '',
+    location: '',
+    bedrooms: '',
+    bathrooms: '',
+    sqft: '',
+    imageUrl: '',
+    tags: ''
   });
+
+  const user = JSON.parse(localStorage.getItem('user'));
+
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    alert('Logged out successfully');
+    window.location.href = '/';
+  };
+
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+
     try {
-      const data = { 
-        ...formData, 
-        tags: formData.tags.split(',').map(tag => tag.trim()).filter(t => t !== "") 
+      const token = localStorage.getItem('token');
+      
+      const listingData = {
+        title: formData.title,
+        description: formData.description,
+        price: Number(formData.price),
+        location: formData.location,
+        bedrooms: Number(formData.bedrooms),
+        bathrooms: Number(formData.bathrooms),
+        sqft: Number(formData.sqft),
+        imageUrl: formData.imageUrl,
+        tags: formData.tags.split(',').map(tag => tag.trim()).filter(t => t !== '')
       };
-      await listingApi.create(data);
-      toast.success("Listing created successfully!");
-      navigate('/my-listings');
+
+      const response = await fetch('http://localhost:5000/api/listings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(listingData)
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert('Listing created successfully!');
+        navigate('/my-listings');
+      } else {
+        alert(data.message || 'Failed to create listing');
+      }
     } catch (error) {
+      alert('Error creating listing');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-stone-50 py-12 px-4">
-      <Card className="max-w-2xl mx-auto border-stone-200 shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-2xl font-serif text-stone-900">Post a New Rental</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <Input placeholder="Property Title" required minLength={5}
-              value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} />
-            
-            <Textarea placeholder="Detailed Description (min 20 chars)" required minLength={20}
-              value={formData.description} onChange={(e) => setFormData({...formData, description: e.target.value})} />
-            
-            <div className="grid grid-cols-2 gap-4">
-              <Input type="number" placeholder="Price (₹)" required
-                value={formData.price} onChange={(e) => setFormData({...formData, price: e.target.value})} />
-              <Input placeholder="Location (e.g. Brooklyn, NY)" required
-                value={formData.location} onChange={(e) => setFormData({...formData, location: e.target.value})} />
+    <div className={styles.page}>
+      <nav className={styles.navbar}>
+        <div className={styles.navContent}>
+          <Link to="/" className={styles.brand}>
+            <div className={styles.logo}>🔑</div>
+            <span>Ghar Dekho</span>
+          </Link>
+
+          <div className={styles.navLinks}>
+            <Link to="/rentals">Rentals</Link>
+          </div>
+
+          <div className={styles.navActions}>
+            <Link to="/my-listings" className={styles.myListingsBtn}>My Listings</Link>
+            <button onClick={handleLogout} className={styles.logoutBtn}>Logout</button>
+            <div className={styles.avatar}>{user?.name?.[0]?.toUpperCase() || 'U'}</div>
+          </div>
+        </div>
+      </nav>
+
+      <div className={styles.container}>
+        <div className={styles.header}>
+          <h1>Create New Listing</h1>
+          <p>Post your rental property advertisement</p>
+        </div>
+
+        <div className={styles.formCard}>
+          <form onSubmit={handleSubmit}>
+            <div className={styles.formGroup}>
+              <label>Property Title *</label>
+              <input
+                type="text"
+                name="title"
+                value={formData.title}
+                onChange={handleChange}
+                placeholder="e.g., Spacious 3BHK in Bandra"
+                required
+                minLength={5}
+              />
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
-              <Input type="number" placeholder="Beds" required
-                value={formData.bedrooms} onChange={(e) => setFormData({...formData, bedrooms: e.target.value})} />
-              <Input type="number" placeholder="Baths" required
-                value={formData.bathrooms} onChange={(e) => setFormData({...formData, bathrooms: e.target.value})} />
-              <Input type="number" placeholder="Sqft" required
-                value={formData.sqft} onChange={(e) => setFormData({...formData, sqft: e.target.value})} />
+            <div className={styles.formGroup}>
+              <label>Description *</label>
+              <textarea
+                name="description"
+                value={formData.description}
+                onChange={handleChange}
+                placeholder="Describe your property..."
+                rows={5}
+                required
+                minLength={20}
+              />
             </div>
 
-            <Input placeholder="Image URL (direct link to photo)" required
-              value={formData.imageUrl} onChange={(e) => setFormData({...formData, imageUrl: e.target.value})} />
-            
-            <Input placeholder="Tags (comma separated: Gym, Pet Friendly, Parking)"
-              value={formData.tags} onChange={(e) => setFormData({...formData, tags: e.target.value})} />
+            <div className={styles.formRow}>
+              <div className={styles.formGroup}>
+                <label>Monthly Rent (₹) *</label>
+                <input
+                  type="number"
+                  name="price"
+                  value={formData.price}
+                  onChange={handleChange}
+                  placeholder="25000"
+                  required
+                  min={0}
+                />
+              </div>
 
-            <Button type="submit" disabled={loading} className="w-full bg-emerald-800 hover:bg-emerald-900 text-white py-6">
-              {loading ? "Posting..." : "Create Listing"}
-            </Button>
+              <div className={styles.formGroup}>
+                <label>Location *</label>
+                <input
+                  type="text"
+                  name="location"
+                  value={formData.location}
+                  onChange={handleChange}
+                  placeholder="e.g., Bandra, Mumbai"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className={styles.formRow}>
+              <div className={styles.formGroup}>
+                <label>Bedrooms *</label>
+                <input
+                  type="number"
+                  name="bedrooms"
+                  value={formData.bedrooms}
+                  onChange={handleChange}
+                  placeholder="3"
+                  required
+                  min={0}
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label>Bathrooms *</label>
+                <input
+                  type="number"
+                  name="bathrooms"
+                  value={formData.bathrooms}
+                  onChange={handleChange}
+                  placeholder="2"
+                  required
+                  min={0}
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label>Area (sqft) *</label>
+                <input
+                  type="number"
+                  name="sqft"
+                  value={formData.sqft}
+                  onChange={handleChange}
+                  placeholder="1200"
+                  required
+                  min={1}
+                />
+              </div>
+            </div>
+
+            <div className={styles.formGroup}>
+              <label>Image URL *</label>
+              <input
+                type="url"
+                name="imageUrl"
+                value={formData.imageUrl}
+                onChange={handleChange}
+                placeholder="https://example.com/image.jpg"
+                required
+              />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label>Tags/Amenities (comma-separated)</label>
+              <input
+                type="text"
+                name="tags"
+                value={formData.tags}
+                onChange={handleChange}
+                placeholder="Furnished, Parking, Lift"
+              />
+            </div>
+
+            <div className={styles.actions}>
+              <button 
+                type="button" 
+                onClick={() => navigate(-1)}
+                className={styles.cancelBtn}
+              >
+                Cancel
+              </button>
+              <button 
+                type="submit" 
+                className={styles.submitBtn}
+                disabled={loading}
+              >
+                {loading ? 'Creating...' : 'Create Listing'}
+              </button>
+            </div>
           </form>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
-};
+}
 
 export default CreateListing;

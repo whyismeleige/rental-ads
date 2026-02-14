@@ -1,81 +1,148 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { listingApi } from '@/lib/api/listing.api';
-import { Button } from '@/components/ui/button';
-import { Plus, Edit, Trash2, Home, Loader2 } from 'lucide-react';
-import { toast } from 'react-hot-toast';
-import { formatINR } from '@/lib/utils';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import styles from './mylistings.module.css';
 
-const MyListings = () => {
+function MyListings() {
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const user = JSON.parse(localStorage.getItem('user'));
 
   const fetchMyListings = async () => {
     try {
-      const { data } = await listingApi.getMyListings();
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:5000/api/listings/my-listings', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await response.json();
+      console.log(data);
       setListings(data);
     } catch (error) {
-      toast.error("Could not load your listings");
+      alert('Could not load your listings');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchMyListings(); }, []);
+  useEffect(() => {
+    fetchMyListings();
+  }, []);
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Delete this listing?")) return;
+    if (!window.confirm('Delete this listing?')) return;
+    
     try {
-      await listingApi.delete(id);
-      setListings(listings.filter(l => l._id !== id));
-      toast.success("Removed");
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:5000/api/listings/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        setListings(listings.filter(l => l._id !== id));
+        alert('Listing deleted');
+      } else {
+        alert('Failed to delete');
+      }
     } catch (err) {
-      toast.error("Failed to delete");
+      alert('Failed to delete');
     }
   };
 
-  if (loading) return <div className="flex h-screen items-center justify-center"><Loader2 className="animate-spin text-emerald-800" /></div>;
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    alert('Logged out successfully');
+    window.location.href = '/';
+  };
+
+  const formatPrice = (price) => {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0
+    }).format(price);
+  };
+
+  const formatNumber = (num) => {
+    return new Intl.NumberFormat('en-IN').format(num);
+  };
 
   return (
-    <div className="min-h-screen bg-stone-50 py-12 px-4">
-      <div className="max-w-5xl mx-auto">
-        <div className="flex justify-between items-end mb-8">
-          <div>
-            <h1 className="text-3xl font-serif text-stone-900">Your Properties</h1>
-            <p className="text-stone-500">Manage your active rental advertisements</p>
+    <div className={styles.page}>
+      <nav className={styles.navbar}>
+        <div className={styles.navContent}>
+          <Link to="/" className={styles.brand}>
+            <div className={styles.logo}>🔑</div>
+            <span>Ghar Dekho</span>
+          </Link>
+
+          <div className={styles.navLinks}>
+            <Link to="/rentals">Rentals</Link>
           </div>
-          <Button asChild className="bg-emerald-800 text-white">
-            <Link to="/create-listing"><Plus className="h-4 w-4 mr-2" /> Post New</Link>
-          </Button>
+
+          <div className={styles.navActions}>
+            <Link to="/my-listings" className={styles.myListingsBtn}>My Listings</Link>
+            <button onClick={handleLogout} className={styles.logoutBtn}>Logout</button>
+            <div className={styles.avatar}>{user?.name?.[0]?.toUpperCase() || 'U'}</div>
+          </div>
+        </div>
+      </nav>
+
+      <div className={styles.container}>
+        <div className={styles.header}>
+          <div>
+            <h1>Your Properties</h1>
+            <p>Manage your active rental advertisements</p>
+          </div>
+          <Link to="/create-listing" className={styles.createBtn}>
+            + Post New
+          </Link>
         </div>
 
-        {listings.length === 0 ? (
-          <div className="bg-white border-2 border-dashed border-stone-200 rounded-3xl p-20 text-center">
-            <Home className="h-12 w-12 text-stone-200 mx-auto mb-4" />
-            <p className="text-stone-500 mb-6 text-lg">You haven't posted any listings yet.</p>
-            <Button asChild variant="outline" className="border-stone-300">
-              <Link to="/create-listing">Create your first post</Link>
-            </Button>
+        {loading ? (
+          <div className={styles.loading}>Loading...</div>
+        ) : listings.length === 0 ? (
+          <div className={styles.empty}>
+            <div className={styles.emptyIcon}>🏠</div>
+            <h2>No listings yet</h2>
+            <p>Create your first rental listing to get started</p>
+            <Link to="/create-listing" className={styles.emptyBtn}>
+              Create Listing
+            </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {listings.map(listing => (
-              <div key={listing._id} className="bg-white rounded-2xl border border-stone-200 overflow-hidden flex shadow-sm group">
-                <div className="w-1/3 overflow-hidden">
-                  <img src={listing.imageUrl} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+          <div className={styles.grid}>
+            {listings.map((listing) => (
+              <div key={listing._id} className={styles.card}>
+                <div className={styles.cardImage}>
+                  <img src={listing.imageUrl} alt={listing.title} />
                 </div>
-                <div className="w-2/3 p-5 flex flex-col justify-between">
-                  <div>
-                    <h3 className="font-serif text-lg text-stone-900 truncate">{listing.title}</h3>
-                    <p className="text-emerald-800 font-bold">{formatINR(listing.price)}</p>
+                <div className={styles.cardContent}>
+                  <h3>{listing.title}</h3>
+                  <p className={styles.location}>📍 {listing.location}</p>
+                  <div className={styles.specs}>
+                    <span>🛏️ {listing.bedrooms} BHK</span>
+                    <span>🚿 {listing.bathrooms} Bath</span>
+                    <span>📐 {formatNumber(listing.sqft)} sqft</span>
                   </div>
-                  <div className="flex gap-2 mt-4">
-                    <Button asChild variant="secondary" size="sm" className="flex-1 bg-stone-100 hover:bg-stone-200">
-                      <Link to={`/edit-listing/${listing._id}`}><Edit className="h-4 w-4 mr-2" /> Edit</Link>
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => handleDelete(listing._id)} className="text-red-500 hover:bg-red-50">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                  <div className={styles.price}>{formatPrice(listing.price)}/month</div>
+                  <div className={styles.actions}>
+                    <Link to={`/listing/${listing._id}`} className={styles.viewBtn}>
+                      👁️ View
+                    </Link>
+                    <Link to={`/edit-listing/${listing._id}`} className={styles.editBtn}>
+                      ✏️ Edit
+                    </Link>
+                    <button 
+                      onClick={() => handleDelete(listing._id)} 
+                      className={styles.deleteBtn}
+                    >
+                      🗑️ Delete
+                    </button>
                   </div>
                 </div>
               </div>
@@ -85,6 +152,6 @@ const MyListings = () => {
       </div>
     </div>
   );
-};
+}
 
 export default MyListings;
